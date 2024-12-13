@@ -13,11 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
+
+import h5py
 import numpy as np
 import torch
-import datetime
 from netCDF4 import Dataset as DS
-import h5py
 
 
 def get_orography(orography_path):
@@ -38,4 +39,3 @@ def get_land_mask(land_mask_path):
         lsm = f["LSM"][0, :, :]
 
     return lsm
-
