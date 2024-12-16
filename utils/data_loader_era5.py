@@ -40,7 +40,8 @@ def get_data_loader(params, files_pattern, distributed, train):
         dataset,
         batch_size=int(params.local_batch_size),
         num_workers=params.num_data_workers,
-        shuffle=(sampler is None),
+        # shuffle=(sampler is None),
+        shuffle=False,
         sampler=sampler,
         worker_init_fn=worker_init,
         drop_last=True,
@@ -67,7 +68,9 @@ class GetDataset(Dataset):
         self.normalize = True
         self.means = np.load(params.global_means_path)[0, self.in_channels]
         self.stds = np.load(params.global_stds_path)[0, self.in_channels]
-        self._get_files_stats()
+        # self._get_files_stats()
+        self.img_shape_x = self.params.img_size[0]
+        self.img_shape_y = self.params.img_size[1]
         if self.params.add_zenith:
             # additional static fields needed for coszen
             longitude = np.arange(0, 360, 0.25)
@@ -121,7 +124,8 @@ class GetDataset(Dataset):
         self.files[year_idx] = _file["fields"]
 
     def __len__(self):
-        return self.n_samples_total
+        # return self.n_samples_total
+        return 100
 
     def _normalize(self, img):
         if self.normalize:
@@ -148,10 +152,11 @@ class GetDataset(Dataset):
         Returns:
         Tuple[torch.Tensor, torch.Tensor]: Tensors for input and target cosine zenith angles.
         """
-        if not 0 <= year_idx < len(self.years):
-            raise ValueError("year_idx is out of bounds.")
+        # if not 0 <= year_idx < len(self.years):
+        #     raise ValueError("year_idx is out of bounds.")
 
-        year = self.years[year_idx]
+        # year = self.years[year_idx]
+        year=2018
         jan_01_epoch = datetime.datetime(
             year, 1, 1, 0, 0, 0
         )  # Reference datetime for the start of the year
@@ -181,7 +186,62 @@ class GetDataset(Dataset):
         # Return the input and target angles as PyTorch tensors
         return torch.as_tensor(cos_zenith_inp), torch.as_tensor(cos_zenith_tar)
 
+
     def __getitem__(self, global_idx):
+        self.n_samples_per_year = 365 * 4 # 6-hourly
+        year_idx = int(global_idx / self.n_samples_per_year)  # which year
+        # which sample in that year
+        local_idx = int(global_idx % self.n_samples_per_year)  
+
+        # open image file
+        # if self.files[year_idx] is None:
+        #     self._open_file(year_idx)
+        step = self.dt  # time step
+
+        # boundary conditions to ensure we don't pull data that is not in a specific year
+        local_idx = local_idx % (self.n_samples_per_year - step * (self.n_future + 1))
+        if local_idx < step:
+            local_idx += step
+
+        # pre-process and get the image fields
+        torch.manual_seed(0)
+        inp_field = torch.randn((len(self.in_channels), self.img_shape_x, self.img_shape_y),dtype=torch.float32)
+        # inp_field = self.files[year_idx][
+        #     local_idx, self.in_channels, 0 : self.img_shape_x, 0 : self.img_shape_y
+        # ]
+        tar_field = torch.randn((1 + self.n_future ,len(self.out_channels), self.img_shape_x, self.img_shape_y),dtype=torch.float32)
+        # tar_field = self.files[year_idx][
+        #     (local_idx + step) : (local_idx + step * (self.n_future + 1) + 1) : step,
+        #     self.out_channels,
+        #     0 : self.img_shape_x,
+        #     0 : self.img_shape_y,
+        # ]
+
+        # normalize images if needed
+        inp, tar = self._normalize(inp_field), self._normalize(tar_field)
+
+        # flatten time indices
+        tar = tar.reshape(
+            (
+                self.n_out_channels * (self.n_future + 1),
+                self.img_shape_x,
+                self.img_shape_y,
+            )
+        )
+
+        if self.params.add_zenith:
+            zen_inp, zen_tar = self._compute_zenith_angle(
+                local_idx, year_idx
+            )  # compute the zenith angles for the input.
+            zen_inp = zen_inp[:, : self.img_shape_x]  # adjust to match input dimensions
+            zen_tar = zen_tar[:, : self.img_shape_x]  # adjust to match input dimensions
+            result = inp, tar, zen_inp, zen_tar
+        else:
+            result = inp, tar
+
+        return result
+
+    def orig__getitem__(self, global_idx):
         year_idx = int(global_idx / self.n_samples_per_year)  # which year
         local_idx = int(
             global_idx % self.n_samples_per_year

@@ -24,18 +24,19 @@ from netCDF4 import Dataset as DS
 def get_orography(orography_path):
     """returns the surface geopotential for each grid point after normalizing it to be in the range [0, 1]"""
 
-    with DS(orography_path, "r") as f:
-        orography = f.variables["Z"][0, :, :]
-
-        orography = (orography - orography.min()) / (orography.max() - orography.min())
-
+    # with DS(orography_path, "r") as f:
+    #     orography = f.variables["Z"][0, :, :]
+    orography = np.load(orography_path)
+    # [0,1] normalize
+    orography = (orography - orography.min()) / (orography.max() - orography.min())
     return orography
 
 
 def get_land_mask(land_mask_path):
     """returns the land mask for each grid point. land sea mask is between 0 and 1"""
 
-    with h5py.File(land_mask_path, "r") as f:
-        lsm = f["LSM"][0, :, :]
+    # with h5py.File(land_mask_path, "r") as f:
+    #     lsm = f["LSM"][0, :, :]
 
-    return lsm
+    lsm = np.load(land_mask_path)
+    return lsm[0]

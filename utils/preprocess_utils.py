@@ -21,9 +21,9 @@ class PreProcessor(nn.Module):
                     get_land_mask(params.landmask_path), dtype=torch.long
                 )
                 # one hot encode and move channels to front:
-                lsm = torch.permute(torch.nn.functional.one_hot(lsm), (2, 0, 1)).to(
-                    torch.float32
-                )
+                # lsm = torch.permute(torch.nn.functional.one_hot(lsm), (2, 0, 1)).to(
+                #     torch.float32
+                # )
                 lsm = torch.reshape(lsm, (1, lsm.shape[0], lsm.shape[1], lsm.shape[2]))[
                     :, :, :imgx, :imgy
                 ]
@@ -40,13 +40,15 @@ class PreProcessor(nn.Module):
                 oro = torch.tensor(
                     get_orography(params.orography_path), dtype=torch.float32
                 )
-                oro = torch.reshape(oro, (1, 1, oro.shape[0], oro.shape[1]))[
+                # oro = torch.reshape(oro, (1, 1, oro.shape[0], oro.shape[1]))[
+                oro = oro[
                     :, :, :imgx, :imgy
                 ]
 
                 # normalize
                 eps = 1.0e-6
                 oro = (oro - torch.mean(oro)) / (torch.std(oro) + eps)
+                # TODO: Should we avoid subtracting mean?
 
                 if static_features is None:
                     static_features = oro

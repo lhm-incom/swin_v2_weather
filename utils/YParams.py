@@ -16,7 +16,7 @@ class YParams:
 
         with open(yaml_filename) as _file:
 
-            for key, val in YAML().load(_file)[config_name].items():
+            for key, val in YAML().load(_file).items():
                 if print_params:
                     print(key, val)
                 if val == "None":

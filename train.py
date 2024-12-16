@@ -335,7 +335,12 @@ class Trainer:
             self.model.zero_grad()
             with amp.autocast(self.params.enable_amp):
                 gen = self.model(inp, coszen=coszen).to(self.device, dtype=torch.float)
-                loss = self.loss_obj(gen, tar, inp)
+                
+                torch.manual_seed(0)
+                rand_gen = torch.randn((1, 73, 720, 1440))
+                rand_tar = torch.randn((1, 73, 720, 1440))
+                loss = self.loss_obj(rand_gen, rand_tar, None)
+                # loss = self.loss_obj(gen, tar, inp)
 
             if self.params.enable_amp:
                 self.gscaler.scale(loss).backward()
@@ -471,7 +476,7 @@ class Trainer:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--run_num", default="00", type=str)
-    parser.add_argument("--yaml_config", default="./config/swin.yaml", type=str)
+    parser.add_argument("--yaml_config", default="./config/swin_73var_geo_depth12_chweight_invar_e1536_00.yaml", type=str)
     parser.add_argument(
         "--config", default="swin_73var_geo_depth12_chweight_invar", type=str
     )

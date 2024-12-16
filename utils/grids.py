@@ -15,7 +15,6 @@
 
 import numpy as np
 import torch
-from torch_harmonics.quadrature import clenshaw_curtiss_weights, legendre_gauss_weights
 
 
 class GridConverter(torch.nn.Module):
@@ -28,6 +27,7 @@ class GridConverter(torch.nn.Module):
 
         if self.src != self.dst:
             if self.dst == "legendre-gauss":
+                from torch_harmonics.quadrature import legendre_gauss_weights
                 cost_lg, _ = legendre_gauss_weights(lat_rad.shape[0], -1, 1)
                 tq = torch.arccos(torch.from_numpy(cost_lg)) - torch.pi / 2.0
                 self.dst_lat = tq.to(lat_rad.device)
@@ -96,6 +96,7 @@ class GridQuadrature(torch.nn.Module):
             # numerical precision can be an issue here, make sure it sums to 4pi:
             quad_weight = quad_weight * (4.0 * torch.pi) / torch.sum(quad_weight)
         elif quadrature_rule == "clenshaw-curtiss":
+            from torch_harmonics.quadrature import clenshaw_curtiss_weights
             cost, w = clenshaw_curtiss_weights(img_shape[0], -1, 1)
             weights = torch.from_numpy(w)
             dlambda = 2 * torch.pi / img_shape[1]
